@@ -533,20 +533,18 @@ class ExprIfExp(Expr):
             yield from _yield(self.orelse, flat=flat, outer_precedence=precedence, is_left=False)
 
 
-if sys.version_info >= (3, 14):
+@dataclass(eq=True, slots=True)
+class ExprInterpolation(Expr):
+    """Template string interpolation like `{name}`."""
 
-    @dataclass(eq=True, slots=True)
-    class ExprInterpolation(Expr):
-        """Template string interpolation like `{name}`."""
+    value: str | Expr
+    """Interpolated value."""
 
-        value: str | Expr
-        """Interpolated value."""
-
-        def iterate(self, *, flat: bool = True) -> Iterator[str | Expr]:
-            yield "{"
-            # Prevent parentheses from being added, avoiding `{(1 + 1)}`
-            yield from _yield(self.value, flat=flat, outer_precedence=_OperatorPrecedence.NONE)
-            yield "}"
+    def iterate(self, *, flat: bool = True) -> Iterator[str | Expr]:
+        yield "{"
+        # Prevent parentheses from being added, avoiding `{(1 + 1)}`
+        yield from _yield(self.value, flat=flat, outer_precedence=_OperatorPrecedence.NONE)
+        yield "}"
 
 
 @dataclass(eq=True, slots=True)
@@ -932,19 +930,17 @@ class ExprSubscript(Expr):
         return self.left.canonical_path
 
 
-if sys.version_info >= (3, 14):
+@dataclass(eq=True, slots=True)
+class ExprTemplateStr(Expr):
+    """Template strings like `t"a {name}"`."""
 
-    @dataclass(eq=True, slots=True)
-    class ExprTemplateStr(Expr):
-        """Template strings like `t"a {name}"`."""
+    values: Sequence[str | Expr]
+    """Joined values."""
 
-        values: Sequence[str | Expr]
-        """Joined values."""
-
-        def iterate(self, *, flat: bool = True) -> Iterator[str | Expr]:
-            yield "t'"
-            yield from _join(self.values, "", flat=flat)
-            yield "'"
+    def iterate(self, *, flat: bool = True) -> Iterator[str | Expr]:
+        yield "t'"
+        yield from _join(self.values, "", flat=flat)
+        yield "'"
 
 
 @dataclass(eq=True, slots=True)
@@ -1245,8 +1241,10 @@ def _build_ifexp(node: ast.IfExp, parent: Module | Class, **kwargs: Any) -> Expr
     )
 
 
-def _build_interpolation(node: ast.Interpolation, parent: Module | Class, **kwargs: Any) -> Expr:
-    return ExprInterpolation(_build(node.value, parent, **kwargs))
+if sys.version_info >= (3, 14):
+
+    def _build_interpolation(node: ast.Interpolation, parent: Module | Class, **kwargs: Any) -> Expr:
+        return ExprInterpolation(_build(node.value, parent, **kwargs))
 
 
 def _build_joinedstr(
@@ -1347,12 +1345,14 @@ def _build_subscript(
     return ExprSubscript(left, slice_expr)
 
 
-def _build_templatestr(
-    node: ast.TemplateStr,
-    parent: Module | Class,
-    **kwargs: Any,
-) -> Expr:
-    return ExprTemplateStr([_build(value, parent, in_joined_str=True, **kwargs) for value in node.values])
+if sys.version_info >= (3, 14):
+
+    def _build_templatestr(
+        node: ast.TemplateStr,
+        parent: Module | Class,
+        **kwargs: Any,
+    ) -> Expr:
+        return ExprTemplateStr([_build(value, parent, in_joined_str=True, **kwargs) for value in node.values])
 
 
 def _build_tuple(
@@ -1411,15 +1411,15 @@ _node_map: dict[type, _BuildCallable] = {
     ast.UnaryOp: _build_unaryop,
     ast.Yield: _build_yield,
     ast.YieldFrom: _build_yield_from,
-    **(
+}
+
+if sys.version_info >= (3, 14):
+    _node_map.update(
         {
             ast.Interpolation: _build_interpolation,
             ast.TemplateStr: _build_templatestr,
-        }
-        if sys.version_info >= (3, 14)
-        else {}
-    ),
-}
+        },
+    )
 
 
 def _build(node: ast.AST, parent: Module | Class, /, **kwargs: Any) -> Expr:
