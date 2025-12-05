@@ -164,6 +164,8 @@ To test your Griffe extensions, or to load API data from code in memory, Griffe 
 
 from __future__ import annotations
 
+import sys
+
 from griffe._internal.agents.inspector import Inspector, inspect
 from griffe._internal.agents.nodes.assignments import get_instance_names, get_name, get_names
 from griffe._internal.agents.nodes.ast import (
@@ -298,7 +300,6 @@ from griffe._internal.expressions import (
     ExprFormatted,
     ExprGeneratorExp,
     ExprIfExp,
-    ExprInterpolation,
     ExprJoinedStr,
     ExprKeyword,
     ExprLambda,
@@ -311,7 +312,6 @@ from griffe._internal.expressions import (
     ExprSetComp,
     ExprSlice,
     ExprSubscript,
-    ExprTemplateStr,
     ExprTuple,
     ExprUnaryOp,
     ExprVarKeyword,
@@ -455,7 +455,6 @@ __all__ = [
     "ExprFormatted",
     "ExprGeneratorExp",
     "ExprIfExp",
-    "ExprInterpolation",
     "ExprJoinedStr",
     "ExprKeyword",
     "ExprLambda",
@@ -468,7 +467,6 @@ __all__ = [
     "ExprSetComp",
     "ExprSlice",
     "ExprSubscript",
-    "ExprTemplateStr",
     "ExprTuple",
     "ExprUnaryOp",
     "ExprVarKeyword",
@@ -609,3 +607,16 @@ __all__ = [
     "visit",
     "vtree",
 ]
+
+if sys.version_info >= (3, 14):
+    from griffe._internal.expressions import (
+        ExprInterpolation,
+        ExprTemplateStr,
+    )
+
+    __all__.extend(
+        [
+            "ExprInterpolation",
+            "ExprTemplateStr",
+        ],
+    )
